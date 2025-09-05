@@ -24,9 +24,9 @@ jobs:
         port: 22
         script: |
           set -e
-          
+
           APP_DIR="/var/www/html/food-project"
-          STAGING_DIR="/home/${{ secrets.EC2_USER }}/food-project_staging"
+          STAGING_DIR="/home/ubuntu/food-project_staging"  # hardcode ubuntu
 
           echo "🚀 Deploying food-project..."
 
