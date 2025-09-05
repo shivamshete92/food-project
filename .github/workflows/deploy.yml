@@ -1,52 +1,62 @@
-name: Deploy to EC2
+name: CI/CD Deploy to EC2
 
 on:
   push:
     branches:
-      - main   # deploy only when main branch is updated
+      - main
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
 
     steps:
-    # 1️⃣ Checkout the repo
-    - name: Checkout code
-      uses: actions/checkout@v3
+      - name: Checkout repository
+        uses: actions/checkout@v3
 
-    # 2️⃣ Deploy via SSH
-    - name: Deploy to EC2
-      uses: appleboy/ssh-action@v0.1.6
-      with:
-        host: ${{ secrets.EC2_HOST }}        # EC2 public IP or DNS
-        username: ${{ secrets.EC2_USER }}    # EC2 username (e.g., ubuntu)
-        key: ${{ secrets.EC2_SSH_KEY }}      # private key content
-        port: 22
-        script: |
-          set -e
+      - name: Deploy to EC2
+        uses: appleboy/ssh-action@v0.1.7
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          port: 22
+          script: |
+            set -e
 
-          APP_DIR="/var/www/html/food-project"
-          STAGING_DIR="/home/ubuntu/food-project_staging"  # hardcode ubuntu
+            echo "🚀 Deploying food-project on EC2..."
 
-          echo "🚀 Deploying food-project..."
+            APP_DIR="/home/${{ secrets.EC2_USER }}/food-project"
+            STAGING_DIR="/home/${{ secrets.EC2_USER }}/food-project_staging"
 
-          # Clone or update staging repo
-          if [ ! -d "$STAGING_DIR/.git" ]; then
-            git clone https://github.com/shivamshete92/food-project.git $STAGING_DIR
-          else
-            cd $STAGING_DIR
-            git reset --hard
-            git pull origin main
-          fi
+            # 1️⃣ Clone or update staging
+            if [ ! -d "$STAGING_DIR/.git" ]; then
+              git clone https://github.com/shivamshete92/food-project.git $STAGING_DIR
+            else
+              cd $STAGING_DIR
+              git reset --hard
+              git pull origin main
+            fi
 
-          # Sync files to Apache directory
-          sudo rsync -av --delete $STAGING_DIR/ $APP_DIR/
+            # 2️⃣ Install PHP (if not installed)
+            if ! command -v php &> /dev/null; then
+              sudo apt update && sudo apt install php php-cli php-mbstring php-curl unzip -y
+            fi
 
-          # Set permissions
-          sudo chown -R www-data:www-data $APP_DIR
-          sudo chmod -R 755 $APP_DIR
+            # 3️⃣ Copy project to APP_DIR
+            mkdir -p $APP_DIR
+            rsync -av --delete $STAGING_DIR/ $APP_DIR/
 
-          # Restart Apache
-          sudo systemctl restart apache2
+            # 4️⃣ Set permissions
+            sudo chown -R $USER:$USER $APP_DIR
+            chmod -R 755 $APP_DIR
 
-          echo "✅ Deployment completed!"
+            # 5️⃣ Start PHP built-in server on port 80
+            # Kill existing process if any
+            if pgrep -f "php -S 0.0.0.0:80" > /dev/null; then
+              pkill -f "php -S 0.0.0.0:80"
+            fi
+
+            # Run in background
+            nohup php -S 0.0.0.0:80 -t $APP_DIR > /dev/null 2>&1 &
+
+            echo "✅ Deployment completed! Visit http://13.51.163.237/"
