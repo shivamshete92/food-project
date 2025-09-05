@@ -23,12 +23,13 @@ jobs:
           script: |
             set -e
 
-            APP_DIR="/var/www/html/food-project"
+            # Directories
+            APP_DIR="/home/${{ secrets.EC2_USER }}/food-project"
             STAGING_DIR="/home/${{ secrets.EC2_USER }}/food-project_staging"
 
             echo "🚀 Deploying food-project..."
 
-            # Ensure directories exist
+            # Make sure directories exist
             mkdir -p "$APP_DIR"
             mkdir -p "$STAGING_DIR"
 
@@ -41,10 +42,13 @@ jobs:
               git pull origin main -q
             fi
 
-            # Sync files to target
+            # Sync files to app directory
             rsync -av --delete "$STAGING_DIR/" "$APP_DIR/"
 
-            # Optional: start PHP built-in server (if no Apache/Nginx)
-            # php -S 0.0.0.0:8080 -t "$APP_DIR" &
+            # Kill any existing PHP server
+            pkill -f "php -S 0.0.0.0:8080" || true
 
-            echo "✅ Deployment completed!"
+            # Start PHP built-in server
+            nohup php -S 0.0.0.0:8080 -t "$APP_DIR" > "$APP_DIR/server.log" 2>&1 &
+
+            echo "✅ Deployment completed! Visit http://${{ secrets.EC2_HOST }}:8080"
