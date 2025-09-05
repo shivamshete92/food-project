@@ -1,26 +1,52 @@
-- name: Deploy to EC2
-  uses: appleboy/ssh-action@v0.1.6
-  with:
-    host: ${{ secrets.EC2_HOST }}
-    username: ${{ secrets.EC2_USER }}
-    key: ${{ secrets.EC2_SSH_KEY }}
-    port: 22
-    script: |
-      set -e
-      APP_DIR="/var/www/html/food-project"
-      STAGING_DIR="/home/ubuntu/food-project_staging"
+name: Deploy to EC2
 
-      if [ ! -d "$STAGING_DIR/.git" ]; then
-        git clone https://github.com/shivamshete92/food-project.git $STAGING_DIR
-      else
-        cd $STAGING_DIR
-        git reset --hard
-        git pull origin main
-      fi
+on:
+  push:
+    branches:
+      - main   # deploy only when main branch is updated
 
-      sudo rsync -av --delete $STAGING_DIR/ $APP_DIR/
-      sudo chown -R www-data:www-data $APP_DIR
-      sudo chmod -R 755 $APP_DIR
-      sudo systemctl restart apache2
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
 
-      echo "✅ Deployment completed!"
+    steps:
+    # 1️⃣ Checkout the repo
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    # 2️⃣ Deploy via SSH
+    - name: Deploy to EC2
+      uses: appleboy/ssh-action@v0.1.6
+      with:
+        host: ${{ secrets.EC2_HOST }}        # EC2 public IP or DNS
+        username: ${{ secrets.EC2_USER }}    # EC2 username (e.g., ubuntu)
+        key: ${{ secrets.EC2_SSH_KEY }}      # private key content
+        port: 22
+        script: |
+          set -e
+          
+          APP_DIR="/var/www/html/food-project"
+          STAGING_DIR="/home/${{ secrets.EC2_USER }}/food-project_staging"
+
+          echo "🚀 Deploying food-project..."
+
+          # Clone or update staging repo
+          if [ ! -d "$STAGING_DIR/.git" ]; then
+            git clone https://github.com/shivamshete92/food-project.git $STAGING_DIR
+          else
+            cd $STAGING_DIR
+            git reset --hard
+            git pull origin main
+          fi
+
+          # Sync files to Apache directory
+          sudo rsync -av --delete $STAGING_DIR/ $APP_DIR/
+
+          # Set permissions
+          sudo chown -R www-data:www-data $APP_DIR
+          sudo chmod -R 755 $APP_DIR
+
+          # Restart Apache
+          sudo systemctl restart apache2
+
+          echo "✅ Deployment completed!"
