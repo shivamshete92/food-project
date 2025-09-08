@@ -34,7 +34,7 @@ jobs:
 
             # Clone or update staging repo
             if [ ! -d "$STAGING_DIR/.git" ]; then
-              git clone https://github.com/shivamshete92/food-project.git "$STAGING_DIR"
+              git clone git@github.com:shivamshete92/food-project.git "$STAGING_DIR"
             else
               cd "$STAGING_DIR"
               git reset --hard -q
