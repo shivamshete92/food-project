@@ -47,7 +47,8 @@ jobs:
             # Kill any existing PHP server
             pkill -f "php -S 0.0.0.0:8080" || true
 
-            # Start PHP built-in server
+            # Start PHP server detached safely
             nohup php -S 0.0.0.0:8080 -t "$APP_DIR" > "$APP_DIR/server.log" 2>&1 &
+            disown
 
             echo "✅ Deployment completed! Visit http://<EC2_PUBLIC_IP>:8080"
