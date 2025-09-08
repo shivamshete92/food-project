@@ -1,4 +1,4 @@
-name: CI/CD Deploy to EC2
+name: Deploy to EC2
 
 on:
   push:
@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
+      - name: Checkout code
         uses: actions/checkout@v3
 
       - name: Deploy to EC2
@@ -23,13 +23,12 @@ jobs:
           script: |
             set -e
 
-            # Directories
             APP_DIR="/home/${{ secrets.EC2_USER }}/food-project"
             STAGING_DIR="/home/${{ secrets.EC2_USER }}/food-project_staging"
 
             echo "🚀 Deploying food-project..."
 
-            # Make sure directories exist
+            # Ensure directories exist
             mkdir -p "$APP_DIR"
             mkdir -p "$STAGING_DIR"
 
